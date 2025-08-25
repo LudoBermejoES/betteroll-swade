@@ -38,6 +38,42 @@ import { BrCommonCard } from "./BrCommonCard.js";
 import { DamageModifier, TraitModifier } from "./modifiers.js";
 import { brAction } from "./actions.js";
 
+
+const SPANISH_VERSION_SKILLS = {
+  "academics": "humanidades",
+  "athletics": "atletismo",
+  "battle": "tácticas",
+  "boating": "navegar",
+  "common knowledge": "conocimientos generales",
+  "driving": "conducir",
+  "electronics": "electrónica",
+  "faith": "fe",
+  "fighting": "pelear",
+  "focus": "control",
+  "gambling": "apostar",
+  "hacking": "ordenadores",
+  "healing": "medicina",
+  "intimidation": "intimidar",
+  "language": "idioma",
+  "notice": "notar",
+  "occult": "ocultismo",
+  "performance": "interpretar",
+  "persuasion": "persuadir",
+  "piloting": "pilotar",
+  "psionics": "psiónica",
+  "repair": "reparar",
+  "research": "investigar",
+  "riding": "cabalgar",
+  "science": "ciencias",
+  "shooting": "disparar",
+  "spellcasting": "hechicería",
+  "stealth": "sigilo",
+  "survival": "supervivencia",
+  "taunt": "provocar",
+  "thievery": "latrocinio",
+  "weird science": "ciencia extraña"
+}
+
 const ARCANE_SKILLS = [
   "faith",
   "focus",
@@ -624,6 +660,17 @@ export function trait_from_string(actor, trait_name) {
         trait_name.toLowerCase().replace("★ ", "") && skill.type === "skill"
     );
   });
+  if(!skill) {
+    const translatedSkill = SPANISH_VERSION_SKILLS[trait_name.toLowerCase()];
+    skill = actor.items.find((skill) => {
+    return (
+      skill.name.toLowerCase().replace("★ ", "") ===
+        translatedSkill && skill.type === "skill"
+    );
+  });
+  }
+
+
   if (!skill) {
     // Time to check for an attribute
     for (const attribute of ATTRIBUTES) {

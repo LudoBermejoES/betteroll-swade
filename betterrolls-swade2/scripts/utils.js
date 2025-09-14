@@ -4,8 +4,8 @@ import * as BRSW2_CONFIG from "./brsw2-config.js";
 /* globals ChatMessage, game, console, foundry, ClientSetting, CONFIG */
 
 export function getWhisperData() {
-  let rollMode, whisper, blind;
-  rollMode = game.settings.get("core", "rollMode");
+  let whisper, blind;
+  const rollMode = game.settings.get("core", "rollMode");
   if (["gmroll", "blindroll"].includes(rollMode)) {
     whisper = ChatMessage.getWhisperRecipients("GM");
   }
@@ -26,8 +26,8 @@ export function makeExplotable(expression) {
   // Code from the SWADE system
   const reg_exp = /\d*d\d+[^kdrxc]/g;
   let new_expression = expression + " "; // Just because of my poor reg_exp foo
-  let dice_strings = new_expression.match(reg_exp);
-  let used = [];
+  const dice_strings = new_expression.match(reg_exp);
+  const used = [];
   if (dice_strings) {
     dice_strings.forEach((match) => {
       if (used.indexOf(match.slice(0, -1)) === -1) {
@@ -45,9 +45,9 @@ export function makeExplotable(expression) {
 export async function spendMastersBenny() {
   // Spends one benny from the gamemaster stack
   // noinspection ES6MissingAwait
-  for (let user of game.users) {
+  for (const user of game.users) {
     if (user.isGM) {
-      let value = user.getFlag("swade", "bennies");
+      const value = user.getFlag("swade", "bennies");
       if (value > 0) {
         await user.setFlag("swade", "bennies", value - 1);
       }
@@ -57,7 +57,7 @@ export async function spendMastersBenny() {
 
 export function broofa() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    let r = (Math.random() * 16) | 0, //jshint ignore:line
+    const r = (Math.random() * 16) | 0, //jshint ignore:line
       v = c === "x" ? r : (r & 0x3) | 0x8; // jshint ignore:line
     return v.toString(16);
   });
@@ -73,7 +73,7 @@ export function broofa() {
  */
 export async function simple_form(title, fields, callback) {
   let content = "<form>";
-  for (let field of fields) {
+  for (const field of fields) {
     const field_id = field.id || field.label;
     content += `<div class="form-group"><label>${field.label}</label>
             <input id='input_${field_id}' value='${field.default_value}'></div>`;
@@ -87,10 +87,12 @@ export async function simple_form(title, fields, callback) {
         label: "OK",
         action: "one",
         callback: (event, target, dialog) => {
-          let values = {};
-          for (let field of fields) {
+          const values = {};
+          for (const field of fields) {
             const field_id = field.id || field.label;
-            values[field_id] = dialog.element.querySelector(`#input_${field_id}`).value;
+            values[field_id] = dialog.element.querySelector(
+              `#input_${field_id}`,
+            ).value;
           }
           callback(values);
         },
@@ -111,7 +113,7 @@ export function get_targeted_token() {
    * Sets the difficulty as the parry value of the targeted
    * or selected token
    */
-  let targets = game.user.targets;
+  const targets = game.user.targets;
   let objective;
   if (targets.size) {
     objective = Array.from(targets)[0];
@@ -138,15 +140,21 @@ export async function set_or_update_condition(condition_id, actor) {
   });
 }
 
-export function addEventListenerAll(html, selector, type, listener, useCapture=false) {
+export function addEventListenerAll(
+  html,
+  selector,
+  type,
+  listener,
+  useCapture = false,
+) {
   html.querySelectorAll(selector).forEach((e) => {
     e.addEventListener(type, listener, useCapture);
   });
 }
 
 function measurePath(waypoints) {
-  let use_grid_calc = SettingsUtils.getWorldSetting("range_calc_grid");
-  let path = canvas.grid.measurePath(waypoints);
+  const use_grid_calc = SettingsUtils.getWorldSetting("range_calc_grid");
+  const path = canvas.grid.measurePath(waypoints);
   return use_grid_calc ? path.distance : path.euclidean;
 }
 
@@ -156,12 +164,21 @@ function getTokenGridSpaces(token) {
     //If we have a gridless grid, divide our token into 1" sections based on the grid size
     //We'll use those as our occupied "spaces" even though there are none
     const halfGrid = canvas.grid.size;
-    const start = { x: token.bounds.left + halfGrid, y: token.bounds.top + halfGrid };
-    const dimensions = { width: Math.round(token.document.width), height: Math.round(token.document.height) };
+    const start = {
+      x: token.bounds.left + halfGrid,
+      y: token.bounds.top + halfGrid,
+    };
+    const dimensions = {
+      width: Math.round(token.document.width),
+      height: Math.round(token.document.height),
+    };
 
     for (let i = 0; i < dimensions.width; ++i) {
       for (let j = 0; j < dimensions.height; ++j) {
-        const coords = { x: start.x + (i * canvas.grid.sizeX), y: start.y + (j * canvas.grid.sizeY) };
+        const coords = {
+          x: start.x + i * canvas.grid.sizeX,
+          y: start.y + j * canvas.grid.sizeY,
+        };
         gridSpaces.push({ coords });
       }
     }
@@ -174,16 +191,21 @@ function getTokenGridSpaces(token) {
 }
 
 export function measureDistance(tokenA, tokenB) {
-  let tokenAGridSpaces = getTokenGridSpaces(tokenA);
-  let tokenBGridSpaces = getTokenGridSpaces(tokenB);
+  if (!tokenA || !tokenB) {
+    ui.notifications.error("measureDistance requires two tokens");
+    return 0;
+  }
+
+  const tokenAGridSpaces = getTokenGridSpaces(tokenA);
+  const tokenBGridSpaces = getTokenGridSpaces(tokenB);
 
   const distSq = function (a, b) {
     return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
-  }
+  };
 
-  let closestPair = { a: null, b: null };
-  for (let tokenASpace of tokenAGridSpaces) {
-    for (let tokenBSpace of tokenBGridSpaces) {
+  const closestPair = { a: null, b: null };
+  for (const tokenASpace of tokenAGridSpaces) {
+    for (const tokenBSpace of tokenBGridSpaces) {
       const dist = distSq(tokenASpace.coords, tokenBSpace.coords);
       if (!closestPair.a) {
         //If we don't have a closest pair yet, use this one
@@ -201,8 +223,14 @@ export function measureDistance(tokenA, tokenB) {
       }
     }
   }
-
-  return measurePath([closestPair.a.coords, closestPair.b.coords]);
+  let measured_distance = measurePath([
+    closestPair.a.coords,
+    closestPair.b.coords,
+  ]);
+  if (SettingsUtils.getWorldSetting("measure_from_edge")) {
+    measured_distance -= game.scenes.current.grid.distance;
+  }
+  return measured_distance;
 }
 
 export class SettingsUtils {
@@ -261,7 +289,7 @@ export class SettingsUtils {
       return;
     }
 
-    let setting = {};
+    const setting = {};
     setting.key = key;
     foundry.utils.mergeObject(setting, metadata);
     BRSW2_CONFIG.WORLD_SETTINGS[key] = setting;
@@ -278,7 +306,7 @@ export class SettingsUtils {
       return;
     }
 
-    let setting = {};
+    const setting = {};
     setting.key = key;
     foundry.utils.mergeObject(setting, metadata);
     BRSW2_CONFIG.USER_SETTINGS[key] = setting;

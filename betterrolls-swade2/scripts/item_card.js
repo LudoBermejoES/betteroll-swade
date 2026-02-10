@@ -225,11 +225,20 @@ export async function create_item_card(
   br_message.type = BRSW_CONST.TYPE_ITEM_CARD;
   br_message.damage = damage;
   br_message.item_id = item_id;
+  br_message.applicable_effects = get_applicable_effects(item);
   await br_message.render(actions_stored);
   await br_message.save();
   call_create_item_card_hooks(item, br_message);
   // eslint-disable-next-line consistent-return
   return br_message;
+}
+
+function get_applicable_effects(item) {
+  const effects = [];
+  for (const effect of item.effects) {
+    effects.push({ id: effect.id, name: effect.name, uuid: effect.uuid });
+  }
+  return effects;
 }
 
 function check_for_actions_with_damage(item) {
@@ -1223,8 +1232,11 @@ async function roll_dmg_target(
         faces: term._faces,
         results: [],
         extra_class: "",
-        label: game.i18n.localize("SWADE.Dmg") + ` (d${term._faces})`,
       };
+      new_die.label = term.flavor
+        ? `${term.flavor.charAt(0).toUpperCase()}${term.flavor.slice(1)}`
+        : game.i18n.localize("SWADE.Dmg");
+      new_die.label += ` (d${term._faces})`;
       for (const result of term.results) {
         new_die.results.push(result.result);
         if (result.result >= term._faces) {

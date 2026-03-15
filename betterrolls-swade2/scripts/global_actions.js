@@ -2,7 +2,7 @@
   readTextFromFile, renderTemplate, foundry, canvas, $ */
 /* jshint -W089 */
 
-import { get_item_trait } from "./item_card.js";
+import { get_item_trait, check_for_actions_with_damage } from "./item_card.js";
 import { SYSTEM_GLOBAL_ACTION } from "./actions/builtin-actions.js";
 import { get_roll_options } from "./cards_common.js";
 import {
@@ -299,14 +299,22 @@ export function check_selector(type, value, item, actor) {
   } else if (type.indexOf("actor_additional_stat_") === 0) {
     const additional_stat = type.slice(22);
     if (actor.system.additionalStats.hasOwnProperty(additional_stat)) {
-      // noinspection EqualityComparisonWithCoercionJS
-      selected = actor.system.additionalStats[additional_stat].value == value;
+      selected = SettingsUtils.check_equality_with_operators(actor.system.additionalStats[additional_stat].value, value);
     }
   } else if (type.indexOf("item_additional_stat_") === 0) {
     const additional_stat = type.slice(21);
     if (item?.system?.additionalStats.hasOwnProperty(additional_stat)) {
-      // noinspection EqualityComparisonWithCoercionJS
-      selected = item.system.additionalStats[additional_stat].value == value;
+      selected = SettingsUtils.check_equality_with_operators(item.system.additionalStats[additional_stat].value, value);
+    }
+  } else if (type.indexOf("target_additional_stat_") === 0) {
+    const additional_stat = type.slice(23);
+    for (const targeted_token of game.user.targets) {
+      if (targeted_token?.actor?.system?.additionalStats.hasOwnProperty(additional_stat)) {
+        if (SettingsUtils.check_equality_with_operators(targeted_token.actor.system.additionalStats[additional_stat].value, value)) {
+          selected = true;
+          break;
+        }
+      }
     }
   } else if (type === "actor_has_joker") {
     selected = actor.hasJoker;
@@ -414,7 +422,10 @@ export function check_selector(type, value, item, actor) {
       selected = check_document_value(targeted_token.actor, value);
     }
   } else if (type === "item_has_damage") {
-    selected = !!item?.system?.damage;
+    selected = !!item?.system && (!!item.system.damage || check_for_actions_with_damage(item));
+    if (value === "false") {
+      selected = !selected;
+    }
   } else if (type === "range_less_than") {
     const tokens = actor.getActiveTokens();
     if (tokens && game.user.targets.size) {
@@ -674,6 +685,7 @@ export class WorldGlobalActions extends HandlebarsApplicationMixin(
         "raiseDamageFormula",
         "wildDieFormula",
         "rerollSkillMod",
+        "rerollMode",
         "rerollDamageMod",
         "selector_type",
         "selector_value",
@@ -776,14 +788,13 @@ async function import_global_actions(app) {
         icon: "fas fa-file-import",
         label: "Import",
         action: "import",
-        callback: (event, target, dialog) => {
+        callback: async (event, target, dialog) => {
           const form = dialog.element.querySelector("form");
           if (!form.data.files.length) {
             return ui.notifications.error("You did not upload a data file!");
           }
-          foundry.utils.readTextFromFile(form.data.files[0]).then((json) => {
-            SettingsUtils.setSetting("world_global_actions", JSON.parse(json));
-          });
+          const jsonText = await foundry.utils.readTextFromFile(form.data.files[0]);
+          await SettingsUtils.setSetting("world_global_actions", JSON.parse(jsonText));
           app.render(true);
         },
       },

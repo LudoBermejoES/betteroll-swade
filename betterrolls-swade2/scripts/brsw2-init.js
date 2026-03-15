@@ -54,6 +54,7 @@ import { setup_chat_button } from "./gm_actions.js";
 // Init Hook
 Hooks.on(`init`, () => {
   game.brsw = {};
+  game.brsw.CONST = {};
   game.brsw.cascade_count = 0;
   game.brsw.get_action_from_click = get_action_from_click;
   game.brsw.measureDistance = measureDistance;
@@ -294,11 +295,19 @@ Hooks.once("diceSoNiceReady", () => {
 
 // Character sheet hooks
 
-["SwadeCharacterSheet", "SwadeNPCSheet", "CharacterSheet"].forEach((name) => {
+["SwadeNPCSheet"].forEach((name) => {
   Hooks.on("render" + name, (app, html, _) => {
     activate_attribute_listeners(app, html[0]);
     activate_skill_listeners(app, html[0]);
     activate_item_listeners(app, html[0]);
+  });
+});
+
+["SwadeActorSheetV2"].forEach((name) => {
+  Hooks.on("render" + name, (app, html, _) => {
+    activate_attribute_listeners(app, html);
+    activate_skill_listeners(app, html);
+    activate_item_listeners(app, html);
   });
 });
 

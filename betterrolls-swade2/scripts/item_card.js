@@ -241,12 +241,14 @@ function get_applicable_effects(item) {
   return effects;
 }
 
-function check_for_actions_with_damage(item) {
-  for (const action in item.system.actions.additional) {
+export function check_for_actions_with_damage(item) {
+  if (!item.system.actions?.additional) {
+    return false;
+  }
+  for (const action in item.system.actions?.additional) {
     const current_action = item.system.actions.additional[action];
     if (current_action.type === "damage" && current_action.override) {
       return true;
-      break;
     }
   }
   return false;
@@ -328,10 +330,46 @@ async function item_click_listener(ev, target, currentTarget) {
   ev.stopImmediatePropagation();
   ev.preventDefault();
   ev.stopPropagation();
-  // First term for PC, second one for NPCs
+  let actor =
+    target instanceof Actor
+      ? target
+      : target instanceof foundry.canvas.placeables.Token ||
+          target instanceof TokenDocument
+        ? target.actor
+        : null;
+  const item_action = ev.currentTarget.dataset.action;
   const item_id = ev.target.closest("[data-item-id]").dataset.itemId;
+  const item = actor.items.find((item) => {
+    return item.id === item_id;
+  });
+  const actionObj = foundry.utils.getProperty(
+    item,
+    "system.actions.additional." + item_action,
+  );
+  const actions_stored = {};
+  if (actionObj) {
+    if (actionObj.type === "trait" || actionObj.type === "damage") {
+      // This is a trait or damage action
+      // Start with the action enabled
+      actions_stored[item_action] = true;
+    } else if (actionObj.type === "macro") {
+      // This is a macro action
+      // Execute the macro and return; no need to create a card
+      const macro = await fromUuid(actionObj.uuid);
+      if (macro) {
+        await macro.execute({
+          actor: actor,
+          token: actor ? actor.token : null,
+          item: item,
+        });
+      }
+      return;
+    }
+  }
   // Show card
-  const br_card = await create_item_card(target, item_id);
+  const br_card = await create_item_card(target, item_id, {
+    actions_stored: actions_stored,
+  });
   if (action.includes("dialog")) {
     game.brsw.dialog.show_card(br_card);
   } else if (action.includes("trait")) {
@@ -344,26 +382,12 @@ async function item_click_listener(ev, target, currentTarget) {
 }
 
 /**
- * If the Super Power companion is active we wait for it to modify the sheet before
- * adding our Hooks
- */
-export function activate_item_listeners(app, html) {
-  if (game.modules.get("swade-supers-companion")?.active) {
-    Hooks.on("spc.renderSuperPowerTab", () => {
-      activate_item_listeners_real(app, html);
-    });
-  } else {
-    activate_item_listeners_real(app, html);
-  }
-}
-
-/**
  * Activates the listeners in the character sheet in items
  * @param app Sheet app
  * @param html Html code
  */
-function activate_item_listeners_real(app, html) {
-  const target = app.token || app.object;
+export function activate_item_listeners(app, html) {
+  const target = app.token || app.actor || app.object;
   // It is possible that the Super Powers module had updated the sheet, so we get it again
   addEventListenerAll(
     html,
@@ -947,6 +971,9 @@ export async function roll_item(br_message, html, expend_bennie, roll_damage) {
   let shots_override; // Override the number of shots used
   let shots_modifier = 0; // Modifier to the number of shots
   const extra_data = { modifiers: [] };
+  if (br_message.trait_roll.is_rolled) {
+    br_message.trait_roll.reroll_mode = expend_bennie ? "benny" : "free";
+  }
   if (expend_bennie) {
     await spend_bennie(br_message.actor);
   }
@@ -1123,11 +1150,16 @@ function get_target_defense(
   };
   if (objective && objective.actor) {
     if (objective.actor.type !== "vehicle") {
-      defense_values.toughness = objective.actor.system.stats.toughness.value;
+      //Get the base toughness without armor
+      const base_toughness =
+        objective.actor.system.stats.toughness.value -
+        objective.actor.system.stats.toughness.armor;
+      //Get the armor of the location we're targeting
       defense_values.armor =
-        parseInt(objective.actor.armorPerLocation[location]) ||
-        objective.actor.system.stats.toughness.armor ||
-        0;
+        objective.actor.armorPerLocation[location] ??
+        objective.actor.system.stats.toughness.armor;
+      //Add that armor to the base toughness to get the correct toughness
+      defense_values.toughness = base_toughness + defense_values.armor;
       defense_values.name = objective.name;
       defense_values.token_id = objective.id;
     } else {
@@ -1195,7 +1227,9 @@ async function roll_dmg_target(
   );
   await roll.evaluate();
   // Heavy armor
-  if (target && !item.system.isHeavyWeapon && has_heavy_armor(target)) {
+  if (target &&
+    (!item.system.isHeavyWeapon && !damage_formulas.heavy_weapon) &&
+    has_heavy_armor(target, damage_formulas.location)) {
     const no_damage_mod = new DamageModifier(
       game.i18n.localize("BRSW.HeavyArmor"),
       -999999,
@@ -1397,10 +1431,14 @@ async function get_damage_mods_from_actions(
     if (action.code.apMod) {
       damage_formulas.ap += parseInt(action.code.apMod);
     }
-    if (action.code.rerollDamageMod && expend_bennie) {
+    const reroll_mode = expend_bennie ? "benny" : "free";
+    if (
+      action.code.rerollDamageMod &&
+      (!action.code.rerollMode || action.code.rerollMode === reroll_mode)
+    ) {
       damage_roll.brswroll.modifiers.push(
         new DamageModifier(
-          action.code.name,
+          game.i18n.localize(action.code.name),
           action.code.rerollDamageMod,
           br_card.actor?.getRollData(),
         ),
@@ -1972,16 +2010,14 @@ function get_template_from_item(item) {
  * Returns true if the target wears a Heavy Armor
  * @param {PlaceableObject} target
  */
-function has_heavy_armor(target) {
+function has_heavy_armor(target, location = "torso") {
   // Equipped is equipStatus 3
-  const heavy_armor = target.document.actor.items.filter(
+  return target.document.actor.itemTypes.armor.some(
     (item) =>
-      item.type === "armor" &&
       item.system.isHeavyArmor &&
-      item.system.locations.torso &&
+      item.system.locations[location] &&
       item.system.equipStatus === 3,
   );
-  return heavy_armor.length > 0;
 }
 
 async function execute_macro(action, br_card) {

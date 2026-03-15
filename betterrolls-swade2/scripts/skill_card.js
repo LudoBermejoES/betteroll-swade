@@ -170,7 +170,7 @@ async function skill_click_listener(ev, target) {
  * @param html Html code
  */
 export function activate_skill_listeners(app, html) {
-  const target = app.token || app.object;
+  const target = app.token || app.actor || app.object;
   addEventListenerAll(
     html,
     ".skill-label a, .skill.item>a, .skill-name, .skill-die",
@@ -214,6 +214,9 @@ export async function roll_skill(br_card, expend_bennie) {
   // Actions
   for (const action of br_card.get_selected_actions()) {
     process_common_actions(action.code, extra_data, macros, br_card.actor);
+  }
+  if (br_card.trait_roll.is_rolled) {
+    br_card.trait_roll.reroll_mode = expend_bennie ? "benny" : "free";
   }
   if (expend_bennie) {
     await spend_bennie(br_card.actor);

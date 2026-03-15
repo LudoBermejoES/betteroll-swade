@@ -1,3 +1,23 @@
+# Version 4.37 aka 
+* Bugfix: Remove all special handling of the SPC Sheet, making BR2 work with last versions.
+* Bugfix: Make spell modifier for Heavy Weapons work. (Dan Brown)
+* Bugfix: Add location check for Heavy Armor (Dan Brown)
+* Actions: Bolt can now use called shots (Dan Brown)
+* Actions: The Drop now applies to all items with damage (Dan Brown)
+* Bugfix: Await added in settings to solve some rendering issues. (Dan Brown)
+
+# Version 4.26 aka a small but huge change, also The Forge
+* Let some actions use compare operators (Dan Brown)
+
+# Version 4.35 aka new character sheet
+* Refactor: Reduce the data stored on card flags for effects.
+* Settings Menu: Fix some CSS issues. (Dan Brown)
+* Injuries: Expose create_injure_effect as an API function. (Dan Brown)
+* Sheet: Support system 5.2 sheets. (Dan Brown)
+* Bugfix: Better calculation of armor in locations (Dan Brown)
+* Cards: Added support for reroll modes (Dan Brown)
+* Actions: Split hands and head called shot into separate actions (Dan Brown)
+
 # Version 4.34 aka lots of flavor
 * Cards: If a damage die has a flavor set, it will be used in the label. (Dan Brown)
 * Cards: Support for dragable active effects on cards.

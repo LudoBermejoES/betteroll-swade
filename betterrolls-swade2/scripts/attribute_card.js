@@ -134,7 +134,7 @@ async function attribute_click_listener(ev, target) {
  * @param html Html code
  */
 export function activate_attribute_listeners(app, html) {
-  const target = app.token || app.object;
+  const target = app.token || app.actor || app.object;
   addEventListenerAll(html, ".attribute-value", "click", async (ev) => {
     await attribute_click_listener(ev, target);
   }, true);
@@ -169,6 +169,9 @@ export async function roll_attribute(br_card, expend_bennie) {
   const macros = [];
   for (const action of br_card.get_selected_actions()) {
     process_common_actions(action.code, extra_data, macros, br_card.actor);
+  }
+  if (br_card.trait_roll.is_rolled) {
+    br_card.trait_roll.reroll_mode = expend_bennie ? "benny" : "free";
   }
   if (expend_bennie) {
     await spend_bennie(br_card.actor);

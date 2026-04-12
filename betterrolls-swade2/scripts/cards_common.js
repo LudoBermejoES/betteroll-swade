@@ -43,6 +43,11 @@ export const BRSW_CONST = {
   TYPE_UNSHAKE_CARD: 13,
   TYPE_UNSTUN_CARD: 14,
   TYPE_RESULT_CARD: 100,
+  ARCANE_MASTERY_EDGES: [
+    "BRSW.EdgeName-Arcane-Mastery",
+    "BRSW.EdgeName-Divine-Mastery",
+    "BRSW.EdgeName-Epic-Mastery",
+  ],
 };
 
 /**
@@ -258,19 +263,23 @@ export function activate_common_listeners(br_card, html) {
         });
       });
   }
-  html
-    .querySelector(".brsw-selected-actions")
-    ?.addEventListener("click", () => {
-      game.brsw.dialog.show_card(br_card);
-    });
+  if (br_card.message.isOwner) {
+    html
+      .querySelector(".brsw-selected-actions")
+      ?.addEventListener("click", () => {
+        game.brsw.dialog.show_card(br_card);
+      });
+  }
   // Collapsible
   manage_collapsables(html, br_card.message);
   // Old rolls
-  const old_rolls = html.querySelectorAll(".brsw-old-roll");
-  for (const old_roll of old_rolls) {
-    old_roll.addEventListener("click", async (ev) => {
-      await old_roll_clicked(ev, br_card);
-    });
+  if (br_card.message.isOwner) {
+    const old_rolls = html.querySelectorAll(".brsw-old-roll");
+    for (const old_roll of old_rolls) {
+      old_roll.addEventListener("click", async (ev) => {
+        await old_roll_clicked(ev, br_card);
+      });
+    }
   }
   // Add modifiers
   html.querySelector(".brsw-add-modifier")?.addEventListener("click", () => {
